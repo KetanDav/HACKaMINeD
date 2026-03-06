@@ -3,7 +3,20 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import type { KBIndex } from "./types";
 
-const DATA_ROOT = process.env.KB_DATA_DIR || path.join(process.cwd(), "data", "kb");
+function resolveDataRoot() {
+  if (process.env.KB_DATA_DIR?.trim()) {
+    return process.env.KB_DATA_DIR;
+  }
+
+  // Vercel/AWS Lambda file system is read-only except /tmp.
+  if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join("/tmp", "kb");
+  }
+
+  return path.join(process.cwd(), "data", "kb");
+}
+
+const DATA_ROOT = resolveDataRoot();
 
 export function getKbRoot(knowledgeBaseId: string) {
   return path.join(DATA_ROOT, knowledgeBaseId);
