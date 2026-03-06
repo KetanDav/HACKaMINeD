@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/onboardings/page": "/admin/onboardings",
+  "/api/onboarding/route": "/api/onboarding",
+  "/api/runtime/turn/route": "/api/runtime/turn",
+  "/api/telephony/exotel/gather/route": "/api/telephony/exotel/gather",
+  "/api/telephony/exotel/sarvam-tts/route": "/api/telephony/exotel/sarvam-tts",
+  "/api/telephony/exotel/voice/route": "/api/telephony/exotel/voice",
+  "/api/telephony/twilio/gather/route": "/api/telephony/twilio/gather",
+  "/api/telephony/twilio/sarvam-tts/route": "/api/telephony/twilio/sarvam-tts",
+  "/api/telephony/twilio/test-gujarati/route": "/api/telephony/twilio/test-gujarati",
+  "/api/telephony/twilio/voice/route": "/api/telephony/twilio/voice",
+  "/favicon.ico/route": "/favicon.ico",
+  "/onboarding/page": "/onboarding",
+  "/page": "/"
+}

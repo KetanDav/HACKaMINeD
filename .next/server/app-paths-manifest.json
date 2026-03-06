@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/onboardings/page": "app/admin/onboardings/page.js",
+  "/api/onboarding/route": "app/api/onboarding/route.js",
+  "/api/runtime/turn/route": "app/api/runtime/turn/route.js",
+  "/api/telephony/exotel/gather/route": "app/api/telephony/exotel/gather/route.js",
+  "/api/telephony/exotel/sarvam-tts/route": "app/api/telephony/exotel/sarvam-tts/route.js",
+  "/api/telephony/exotel/voice/route": "app/api/telephony/exotel/voice/route.js",
+  "/api/telephony/twilio/gather/route": "app/api/telephony/twilio/gather/route.js",
+  "/api/telephony/twilio/sarvam-tts/route": "app/api/telephony/twilio/sarvam-tts/route.js",
+  "/api/telephony/twilio/test-gujarati/route": "app/api/telephony/twilio/test-gujarati/route.js",
+  "/api/telephony/twilio/voice/route": "app/api/telephony/twilio/voice/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/page": "app/page.js"
+}

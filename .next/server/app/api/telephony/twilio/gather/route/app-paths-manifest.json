@@ -1,0 +1,3 @@
+{
+  "/api/telephony/twilio/gather/route": "app/api/telephony/twilio/gather/route.js"
+}

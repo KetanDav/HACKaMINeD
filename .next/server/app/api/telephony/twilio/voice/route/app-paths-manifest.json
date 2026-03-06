@@ -1,0 +1,3 @@
+{
+  "/api/telephony/twilio/voice/route": "app/api/telephony/twilio/voice/route.js"
+}
