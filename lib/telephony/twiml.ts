@@ -42,21 +42,23 @@ export function playAudioOrSayTwiml(input: {
   const message = escapeXml(input.message);
   const action = escapeXml(input.actionUrl);
   const languageCode = escapeXml(input.languageCode || "en-IN");
-  const followupPrompt = escapeXml(input.followupPrompt || "You can ask another question.");
 
-  const voicePart = input.audioUrl
-    ? `<Play>${escapeXml(input.audioUrl)}</Play>`
-    : `<Say voice="alice" language="${languageCode}">${message}</Say>`;
-
-  const gatherPromptPart = input.audioUrl
-    ? ""
-    : `<Say voice="alice" language="${languageCode}">${followupPrompt}</Say>`;
-
-  return `
-    ${voicePart}
-    <Pause length="1"/>
+  if (input.audioUrl) {
+    // Sarvam TTS: Play the audio, then open a silent Gather for the next turn
+    return `
+    <Play>${escapeXml(input.audioUrl)}</Play>
     <Gather input="speech" speechTimeout="auto" action="${action}" method="POST" language="${languageCode}">
-      ${gatherPromptPart}
+    </Gather>
+    <Redirect method="POST">${action}</Redirect>
+  `;
+  }
+
+  // Twilio built-in TTS: Speak the AI response INSIDE the Gather tag
+  // so the caller can interrupt (barge-in) and there is no separate
+  // "You can ask another question" line appended.
+  return `
+    <Gather input="speech" speechTimeout="auto" action="${action}" method="POST" language="${languageCode}">
+      <Say voice="alice" language="${languageCode}">${message}</Say>
     </Gather>
     <Redirect method="POST">${action}</Redirect>
   `;
@@ -70,9 +72,13 @@ export function escalateTwiml(input: {
   const message = escapeXml(input.message);
   const phone = escapeXml(input.phoneNumber);
   const languageCode = escapeXml(input.languageCode || "en-IN");
+  const callerId = escapeXml(process.env.TWILIO_PHONE_NUMBER || "");
 
   return `
     <Say voice="alice" language="${languageCode}">${message}</Say>
-    <Dial>${phone}</Dial>
+    <Dial${callerId ? ` callerId="${callerId}"` : ""} timeout="30">
+      <Number>${phone}</Number>
+    </Dial>
+    <Say voice="alice" language="${languageCode}">The agent is not available right now. Please try again later. Goodbye.</Say>
   `;
 }
