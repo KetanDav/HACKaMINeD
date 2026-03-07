@@ -10,6 +10,20 @@ import { processConversationTurn } from "@/lib/session/conversation";
 
 export const runtime = "nodejs";
 
+function getDefaultNoInputPrompt(languageCode: string) {
+  const normalized = (languageCode || "en-IN").toLowerCase();
+  if (normalized.startsWith("hi")) return "Mujhe aapki baat sahi se sunai nahi di. Kripya dobara kahiye.";
+  if (normalized.startsWith("gu")) return "Mane tamari vaat spasht sambhlai nathi. Krupaya fari kahesho.";
+  return "I did not catch that. Please repeat your question.";
+}
+
+function getDefaultFollowupPrompt(languageCode: string) {
+  const normalized = (languageCode || "en-IN").toLowerCase();
+  if (normalized.startsWith("hi")) return "Aap agla sawaal puchh sakte hain.";
+  if (normalized.startsWith("gu")) return "Tame aagal no prashn puchhi shako cho.";
+  return "You can ask another question.";
+}
+
 function getBaseUrl() {
   return process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
@@ -46,11 +60,11 @@ export async function POST(request: Request) {
   const noInputPrompt =
     process.env.TELEPHONY_DEMO_NO_INPUT_PROMPT ||
     process.env.TELEPHONY_NO_INPUT_PROMPT ||
-    "I did not catch that. Please repeat your question.";
+    getDefaultNoInputPrompt(languageCode);
   const followupPrompt =
     process.env.TELEPHONY_DEMO_FOLLOWUP_PROMPT ||
     process.env.TELEPHONY_FOLLOWUP_PROMPT ||
-    "You can ask another question.";
+    getDefaultFollowupPrompt(languageCode);
 
   try {
     const form = await request.formData();

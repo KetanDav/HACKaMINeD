@@ -22,6 +22,20 @@ import { processConversationTurn } from "@/lib/session/conversation";
 
 export const runtime = "nodejs";
 
+function getDefaultNoInputPrompt(languageCode: string) {
+  const normalized = (languageCode || "en-IN").toLowerCase();
+  if (normalized.startsWith("hi")) return "Mujhe aapki baat sahi se sunai nahi di. Kripya dobara kahiye.";
+  if (normalized.startsWith("gu")) return "Mane tamari vaat spasht sambhlai nathi. Krupaya fari kahesho.";
+  return "I did not catch that. Please repeat your query.";
+}
+
+function getDefaultFollowupPrompt(languageCode: string) {
+  const normalized = (languageCode || "en-IN").toLowerCase();
+  if (normalized.startsWith("hi")) return "Aap agla sawaal puchh sakte hain.";
+  if (normalized.startsWith("gu")) return "Tame aagal no prashn puchhi shako cho.";
+  return "You can ask another question.";
+}
+
 function buildSarvamPlaybackUrl(baseUrl: string, text: string, languageCode = "en-IN") {
   const url = new URL(`${baseUrl}/api/telephony/twilio/sarvam-tts`);
   url.searchParams.set("text", text);
@@ -64,10 +78,10 @@ export async function POST(request: Request) {
       "en-IN";
     const noInputPrompt =
       (isDemoInbound ? process.env.TELEPHONY_DEMO_NO_INPUT_PROMPT : process.env.TELEPHONY_NO_INPUT_PROMPT) ||
-      "I did not catch that. Please repeat your query.";
+      getDefaultNoInputPrompt(languageCode);
     const followupPrompt =
       (isDemoInbound ? process.env.TELEPHONY_DEMO_FOLLOWUP_PROMPT : process.env.TELEPHONY_FOLLOWUP_PROMPT) ||
-      "You can ask another question.";
+      getDefaultFollowupPrompt(languageCode);
     const useSarvamStt = process.env.TELEPHONY_USE_SARVAM_STT === "true" && Boolean(process.env.SARVAM_API_KEY);
 
     console.log(
@@ -161,6 +175,7 @@ export async function POST(request: Request) {
       : {
           ...getDefaultRuntimeContext(),
           ...(await loadRuntimeContextFromInboundNumber(getNormalizedInboundNumber(form))),
+          callerNumber: String(form.get("From") || "").trim() || undefined,
         };
     const conversation = await processConversationTurn({
       callSid,

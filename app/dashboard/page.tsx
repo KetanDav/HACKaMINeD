@@ -62,6 +62,14 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
+  const { data: appointmentSlots } = await admin
+    .from("appointment_slots")
+    .select("id, slot_date, slot_time, status, customer_name, customer_phone")
+    .eq("business_profile_id", profile.id)
+    .order("slot_date", { ascending: true })
+    .order("slot_time", { ascending: true })
+    .limit(300);
+
   const { data: flags } = await admin
     .from("feature_flags")
     .select("whatsapp_enabled")
@@ -171,6 +179,7 @@ export default async function DashboardPage() {
           tierName={tierNames[currentTier] || "Starter"}
           whatsappEnabled={Boolean(flags?.whatsapp_enabled)}
           documents={docs || []}
+          appointmentSlots={appointmentSlots || []}
           customTools={customTools}
         />
       </div>

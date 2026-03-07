@@ -1,6 +1,7 @@
 import { searchKnowledgeBase } from "@/lib/kb/retriever";
 import { searchBusinessKnowledge } from "@/lib/kb/dbRetriever";
 import { getAIProvider } from "@/lib/ai";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type RuntimeCustomTool = {
   name: string;
@@ -12,6 +13,7 @@ export type RuntimeCustomTool = {
 
 export type RuntimeBusinessContext = {
   businessProfileId?: string;
+  callerNumber?: string;
   systemPrompt?: string;
   customTools?: RuntimeCustomTool[];
   allowedToolNames?: string[];
@@ -189,6 +191,52 @@ export class MCPToolRouter {
     return this.getTools().find((tool) => tool.name === name);
   }
 
+  private normalizeDate(value: string) {
+    const trimmed = String(value || "").trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return "";
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+
+  private normalizeTime(value: string) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+
+    const ampmMatch = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (ampmMatch) {
+      let hour = Number(ampmMatch[1]);
+      const minute = Number(ampmMatch[2] || "0");
+      const ampm = ampmMatch[3].toLowerCase();
+      if (Number.isNaN(hour) || Number.isNaN(minute) || minute < 0 || minute > 59) return "";
+      if (hour < 1 || hour > 12) return "";
+      if (ampm === "pm" && hour !== 12) hour += 12;
+      if (ampm === "am" && hour === 12) hour = 0;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+    }
+
+    const hmMatch = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (hmMatch) {
+      const hour = Number(hmMatch[1]);
+      const minute = Number(hmMatch[2]);
+      if (Number.isNaN(hour) || Number.isNaN(minute)) return "";
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+    }
+
+    return "";
+  }
+
+  private formatTimeForSpeech(timeValue: string) {
+    const match = String(timeValue || "").match(/^(\d{2}):(\d{2})/);
+    if (!match) return timeValue;
+    const hour24 = Number(match[1]);
+    const minute = Number(match[2]);
+    const suffix = hour24 >= 12 ? "PM" : "AM";
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+    if (minute === 0) return `${hour12} ${suffix}`;
+    return `${hour12}:${String(minute).padStart(2, "0")} ${suffix}`;
+  }
+
   async execute(
     action: string,
     slots: Record<string, string>,
@@ -283,6 +331,48 @@ export class MCPToolRouter {
 
       case "check_available_slots": {
         const date = slots.date;
+
+        if (context.businessProfileId) {
+          const normalizedDate = this.normalizeDate(date);
+          if (!normalizedDate) {
+            return {
+              ok: false,
+              action,
+              message: "Please provide date in YYYY-MM-DD format.",
+            };
+          }
+
+          const admin = getSupabaseAdmin();
+          const { data, error } = await admin
+            .from("appointment_slots")
+            .select("slot_time, status")
+            .eq("business_profile_id", context.businessProfileId)
+            .eq("slot_date", normalizedDate)
+            .order("slot_time", { ascending: true });
+
+          if (error) {
+            return {
+              ok: false,
+              action,
+              message: "I could not fetch available slots right now.",
+            };
+          }
+
+          const free = (data || [])
+            .filter((item) => item.status === "free")
+            .map((item) => this.formatTimeForSpeech(String(item.slot_time)));
+
+          return {
+            ok: true,
+            action,
+            message:
+              free.length > 0
+                ? `Available slots on ${normalizedDate}: ${free.join(", ")}`
+                : `No slots available on ${normalizedDate}.`,
+            data: { date: normalizedDate, free_slots: free },
+          };
+        }
+
         const bookedForDate = (context.appointments || []).filter((a) => a.date === date);
         const defaultSlots = ["10:00", "11:30", "16:00", "18:00"];
         const free = defaultSlots.filter(
@@ -300,6 +390,80 @@ export class MCPToolRouter {
       }
 
       case "book_appointment": {
+        if (context.businessProfileId) {
+          const normalizedDate = this.normalizeDate(slots.date);
+          const normalizedTime = this.normalizeTime(slots.time);
+
+          if (!normalizedDate || !normalizedTime) {
+            return {
+              ok: false,
+              action,
+              message: "Please provide booking date as YYYY-MM-DD and a valid time.",
+            };
+          }
+
+          const admin = getSupabaseAdmin();
+          const { data: existing } = await admin
+            .from("appointment_slots")
+            .select("id, status")
+            .eq("business_profile_id", context.businessProfileId)
+            .eq("slot_date", normalizedDate)
+            .eq("slot_time", normalizedTime)
+            .limit(1)
+            .maybeSingle<{ id: string; status: "free" | "booked" }>();
+
+          if (existing?.status === "booked") {
+            return {
+              ok: false,
+              action,
+              message: `That slot on ${normalizedDate} at ${this.formatTimeForSpeech(normalizedTime)} is already booked.`,
+            };
+          }
+
+          const bookingPayload = {
+            business_profile_id: context.businessProfileId,
+            slot_date: normalizedDate,
+            slot_time: normalizedTime,
+            status: "booked",
+            customer_name: String(slots.name || "").trim() || "Caller",
+            customer_phone: String(slots.phone || context.callerNumber || "").trim() || null,
+            notes: "Booked via AI call assistant",
+          };
+
+          const saveResult = existing?.id
+            ? await admin
+                .from("appointment_slots")
+                .update(bookingPayload)
+                .eq("id", existing.id)
+                .select("id")
+                .single<{ id: string }>()
+            : await admin
+                .from("appointment_slots")
+                .insert(bookingPayload)
+                .select("id")
+                .single<{ id: string }>();
+
+          if (saveResult.error || !saveResult.data?.id) {
+            return {
+              ok: false,
+              action,
+              message: "I could not complete the booking due to a system issue.",
+            };
+          }
+
+          return {
+            ok: true,
+            action,
+            message: `Appointment booked for ${slots.name} on ${normalizedDate} at ${this.formatTimeForSpeech(normalizedTime)}.`,
+            data: {
+              booking_id: saveResult.data.id,
+              name: slots.name,
+              date: normalizedDate,
+              time: normalizedTime,
+            },
+          };
+        }
+
         return {
           ok: true,
           action,

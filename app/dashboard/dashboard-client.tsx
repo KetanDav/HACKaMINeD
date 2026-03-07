@@ -18,21 +18,39 @@ type ToolConfig = {
     prompt: string;
 };
 
+type AppointmentSlot = {
+    id: string;
+    slot_date: string;
+    slot_time: string;
+    status: "free" | "booked";
+    customer_name: string | null;
+    customer_phone: string | null;
+};
+
 type Props = {
     tier: number;
     tierName: string;
     whatsappEnabled: boolean;
     documents: DashboardDoc[];
+    appointmentSlots: AppointmentSlot[];
     customTools: ToolConfig[];
 };
 
 const docKinds = ["general", "policy", "faq", "manual", "pricing"] as const;
+
+function formatLocalIsoDate(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
 export default function DashboardClient({
     tier,
     tierName,
     whatsappEnabled,
     documents,
+    appointmentSlots,
     customTools,
 }: Props) {
     const router = useRouter();
@@ -51,9 +69,36 @@ export default function DashboardClient({
     const [savingTools, setSavingTools] = useState(false);
     const [toolsMessage, setToolsMessage] = useState("");
 
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthDays = monthEnd.getDate();
+
+    const [slotDate, setSlotDate] = useState(formatLocalIsoDate(monthStart));
+    const [slotTime, setSlotTime] = useState("10:00");
+    const [slotStatus, setSlotStatus] = useState<"free" | "booked">("free");
+    const [customerName, setCustomerName] = useState("");
+    const [customerPhone, setCustomerPhone] = useState("");
+    const [bookingMessage, setBookingMessage] = useState("");
+    const [savingBooking, setSavingBooking] = useState(false);
+
     const sortedDocs = useMemo(
         () => [...documents].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)),
         [documents],
+    );
+
+    const bookedDates = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const slot of appointmentSlots) {
+            if (slot.status !== "booked") continue;
+            map.set(slot.slot_date, (map.get(slot.slot_date) || 0) + 1);
+        }
+        return map;
+    }, [appointmentSlots]);
+
+    const bookedSlots = useMemo(
+        () => appointmentSlots.filter((slot) => slot.status === "booked").slice(0, 15),
+        [appointmentSlots],
     );
 
     async function onUploadPdf(event: React.FormEvent) {
@@ -139,6 +184,37 @@ export default function DashboardClient({
         }
     }
 
+    async function onSaveSlot(event: React.FormEvent) {
+        event.preventDefault();
+        setSavingBooking(true);
+        setBookingMessage("");
+
+        try {
+            const res = await fetch("/api/dashboard/appointments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    slotDate,
+                    slotTime,
+                    status: slotStatus,
+                    customerName,
+                    customerPhone,
+                }),
+            });
+            const data = (await res.json()) as { error?: string };
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to save time slot.");
+            }
+
+            setBookingMessage(slotStatus === "booked" ? "Booking saved." : "Free slot saved.");
+            router.refresh();
+        } catch (error) {
+            setBookingMessage(error instanceof Error ? error.message : "Failed to save time slot.");
+        } finally {
+            setSavingBooking(false);
+        }
+    }
+
     return (
         <section className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
@@ -198,6 +274,100 @@ export default function DashboardClient({
             </div>
 
             <div className="space-y-6">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <h2 className="text-lg font-semibold">Monthly Booking Calendar</h2>
+                    <p className="mt-2 text-sm text-[#b8cdea]">
+                        {monthStart.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                    </p>
+                    <div className="mt-4 grid grid-cols-7 gap-2 text-xs text-[#9db8da]">
+                        {Array.from({ length: monthDays }).map((_, index) => {
+                            const day = index + 1;
+                            const date = new Date(now.getFullYear(), now.getMonth(), day);
+                            const isoDate = formatLocalIsoDate(date);
+                            const bookedCount = bookedDates.get(isoDate) || 0;
+                            return (
+                                <div
+                                    key={isoDate}
+                                    className={`rounded-lg border px-2 py-2 ${bookedCount > 0 ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-[#0b182a]"}`}
+                                >
+                                    <p className="font-medium">{day}</p>
+                                    <p>{bookedCount > 0 ? `${bookedCount} booked` : "free"}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <h2 className="text-lg font-semibold">Time Booking</h2>
+                    <form className="mt-3 grid gap-3" onSubmit={onSaveSlot}>
+                        <input
+                            type="date"
+                            value={slotDate}
+                            onChange={(e) => setSlotDate(e.target.value)}
+                            className="w-full rounded-lg border border-white/20 bg-[#0d1e32] px-3 py-2 text-sm"
+                            required
+                        />
+                        <input
+                            type="time"
+                            value={slotTime}
+                            onChange={(e) => setSlotTime(e.target.value)}
+                            className="w-full rounded-lg border border-white/20 bg-[#0d1e32] px-3 py-2 text-sm"
+                            required
+                        />
+                        <select
+                            value={slotStatus}
+                            onChange={(e) => setSlotStatus(e.target.value as "free" | "booked")}
+                            className="w-full rounded-lg border border-white/20 bg-[#0d1e32] px-3 py-2 text-sm"
+                        >
+                            <option value="free">Free slot</option>
+                            <option value="booked">Booked slot</option>
+                        </select>
+                        {slotStatus === "booked" ? (
+                            <>
+                                <input
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    placeholder="Customer name"
+                                    className="w-full rounded-lg border border-white/20 bg-[#0d1e32] px-3 py-2 text-sm"
+                                />
+                                <input
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    placeholder="Customer phone"
+                                    className="w-full rounded-lg border border-white/20 bg-[#0d1e32] px-3 py-2 text-sm"
+                                />
+                            </>
+                        ) : null}
+                        <button
+                            type="submit"
+                            disabled={savingBooking}
+                            className="rounded-lg border border-white/20 px-4 py-2 text-sm disabled:opacity-50"
+                        >
+                            {savingBooking ? "Saving..." : "Save Time Slot"}
+                        </button>
+                    </form>
+                    {bookingMessage ? <p className="mt-2 text-sm text-[#bfe7ff]">{bookingMessage}</p> : null}
+                    <div className="mt-4 space-y-2">
+                        <p className="text-sm font-medium">Recent Bookings</p>
+                        {bookedSlots.length === 0 ? (
+                            <p className="text-sm text-[#9db8da]">No booked appointments yet.</p>
+                        ) : (
+                            bookedSlots.map((slot) => (
+                                <div key={slot.id} className="rounded-lg border border-white/10 bg-[#0b182a] px-3 py-2 text-sm">
+                                    <p className="font-medium">
+                                        {slot.slot_date} at {String(slot.slot_time).slice(0, 5)}
+                                    </p>
+                                    <p className="text-[#95b2d5]">
+                                        {slot.customer_name || "Caller"}
+                                        {slot.customer_phone ? ` • ${slot.customer_phone}` : ""}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                     <h2 className="text-lg font-semibold">Tier Features</h2>
                     <p className="mt-2 text-sm text-[#b8cdea]">Current plan: Tier {tier} ({tierName})</p>
