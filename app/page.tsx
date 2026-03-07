@@ -30,7 +30,7 @@ const features = [
 const plans = [
   {
     name: "Tier 1 • Starter",
-    price: "₹6/mo",
+    price: "₹199/mo",
     subtitle: "KB + AI Number",
     features: [
       "AI call answering from knowledge base",
@@ -40,7 +40,7 @@ const plans = [
   },
   {
     name: "Tier 2 • Connect",
-    price: "₹7/mo",
+    price: "₹399/mo",
     subtitle: "Comms Integrations",
     features: [
       "Everything in Tier 1",
@@ -50,7 +50,7 @@ const plans = [
   },
   {
     name: "Tier 3 • Ops",
-    price: "₹8/mo",
+    price: "₹699/mo",
     subtitle: "Dashboard Included",
     features: [
       "Everything in Tier 2",
@@ -60,7 +60,7 @@ const plans = [
   },
   {
     name: "Tier 4 • Custom",
-    price: "₹9/mo",
+    price: "₹999/mo",
     subtitle: "Custom MCP + Self-hosted LLM",
     features: [
       "Tier 3 capabilities with optional modules",
@@ -152,7 +152,7 @@ export default function Home() {
             transition={{ delay: 0.08, duration: 0.55 }}
             className="mt-5 text-4xl font-semibold tracking-tight sm:text-6xl"
           >
-            Professional AI Voice Support,
+            Professional AI Voice Support
             <span className="block bg-gradient-to-r from-cyan-300 via-blue-300 to-emerald-300 bg-clip-text text-transparent">
               Built for Every Business
             </span>
