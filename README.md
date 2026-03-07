@@ -1,13 +1,13 @@
-# 🎙️ VoiceDesk 
+# 🎙️ Callify 
 
 **Enterprise-Grade AI Voice Infrastructure for Local Businesses**
 
-VoiceDesk is a B2B SaaS platform that allows local businesses (clinics, hotels, salons, etc.) to instantly deploy an intelligent, voice-first customer support agent. By simply filling out a form and uploading existing documents (PDFs/TXTs), businesses get a provisioned phone number where an AI instantly answers customer queries, books appointments, and checks prices—all based strictly on the business's unique data.
+Callify is a B2B SaaS platform that allows local businesses (clinics, hotels, salons, etc.) to instantly deploy an intelligent, voice-first customer support agent. By simply filling out a form and uploading existing documents (PDFs/TXTs), businesses get a provisioned phone number where an AI instantly answers customer queries, books appointments, and checks prices—all based strictly on the business's unique data.
 
 ---
 
 ## 🚀 The Vision
-Small and medium businesses miss calls and lose revenue because they cannot afford 24/7 human receptionists. Existing chatbot solutions are text-based and lack the personal, immediate touch of a phone call. VoiceDesk bridges this gap by providing an end-to-end AI telephony layer that feels native, conversational, and highly accurate.
+Small and medium businesses miss calls and lose revenue because they cannot afford 24/7 human receptionists. Existing chatbot solutions are text-based and lack the personal, immediate touch of a phone call. Callify bridges this gap by providing an end-to-end AI telephony layer that feels native, conversational, and highly accurate.
 
 ## 🧠 System Architecture & Data Flow
 
@@ -33,10 +33,10 @@ graph TD
 ### The End-to-End Flow
 
 1. **Onboarding (The Input):**
-   - A business owner visits the VoiceDesk dashboard (`/onboarding` or `/test-upload`).
+   - A business owner visits the Callify dashboard (`/onboarding` or `/test-upload`).
    - They provide structured data (Opening hours, Pricing, Contact info).
    - They upload unstructured data (PDFs of refund policies, complex FAQs).
-   - *Result:* VoiceDesk saves this to the PostgreSQL Database and automatically links a provisioned Twilio Phone Number to this new "Tenant".
+   - *Result:* Callify saves this to the PostgreSQL Database and automatically links a provisioned Twilio Phone Number to this new "Tenant".
 
 2. **The Call (The Interaction):**
    - A customer dials the Twilio number.
