@@ -1,8 +1,16 @@
 import { runRuntimeTurn } from "@/lib/runtime/orchestrator";
-import { getDefaultRuntimeContext } from "@/lib/telephony/context";
 import { playAudioOrSayTwiml, twimlResponse } from "@/lib/telephony/twiml";
+import { getDemoContextText } from "@/lib/demoContextStore";
+import {
+  isAllowedDemoTwilioSource,
+  isDemoTwilioSignatureValid,
+} from "@/lib/telephony/twilioDemoValidation";
 
 export const runtime = "nodejs";
+
+function getBaseUrl() {
+  return process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
 
 function buildSarvamPlaybackUrl(baseUrl: string, text: string, languageCode = "en-IN") {
   const url = new URL(`${baseUrl}/api/telephony/twilio/sarvam-tts`);
@@ -21,37 +29,35 @@ function getSpeechFromForm(form: FormData) {
 }
 
 export async function POST(request: Request) {
+  const baseUrl = getBaseUrl();
+  const gatherAction = `${baseUrl}/api/telephony/twilio/demo/gather`;
+  const languageCode =
+    process.env.TELEPHONY_DEMO_LANGUAGE_CODE || process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
+  const noInputPrompt =
+    process.env.TELEPHONY_DEMO_NO_INPUT_PROMPT ||
+    process.env.TELEPHONY_NO_INPUT_PROMPT ||
+    "I did not catch that. Please repeat your question.";
+  const followupPrompt =
+    process.env.TELEPHONY_DEMO_FOLLOWUP_PROMPT ||
+    process.env.TELEPHONY_FOLLOWUP_PROMPT ||
+    "You can ask another question.";
+
   try {
     const form = await request.formData();
 
-    const payloadEntries = Object.fromEntries(form.entries());
-    const speechResult = getSpeechFromForm(form);
-    const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
-    const gatherAction = `${baseUrl}/api/telephony/twilio/gather`;
-    const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
-    const noInputPrompt =
-      process.env.TELEPHONY_NO_INPUT_PROMPT || "I did not catch that. Please repeat your query.";
-    const followupPrompt =
-      process.env.TELEPHONY_FOLLOWUP_PROMPT || "You can ask another question.";
+    if (!isAllowedDemoTwilioSource(form)) {
+      return twimlResponse(
+        '<Say voice="alice">This call is not coming from the configured demo Twilio number.</Say>',
+      );
+    }
 
-    console.log(
-      JSON.stringify({
-        event: "twilio.gather.request",
-        path: "/api/telephony/twilio/gather",
-        languageCode,
-        payload: payloadEntries,
-      }),
-    );
+    if (!isDemoTwilioSignatureValid(request, form)) {
+      return new Response("Invalid Twilio signature", { status: 403 });
+    }
+
+    const speechResult = getSpeechFromForm(form);
 
     if (!speechResult) {
-      console.log(
-        JSON.stringify({
-          event: "twilio.gather.no_input",
-          prompt: noInputPrompt,
-          actionUrl: gatherAction,
-        }),
-      );
-
       return twimlResponse(
         playAudioOrSayTwiml({
           message: noInputPrompt,
@@ -62,25 +68,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const runtimeContext = getDefaultRuntimeContext();
     const runtimeResult = await runRuntimeTurn({
       utterance: speechResult,
       languageCode,
-      context: runtimeContext,
+      context: {
+        customContextText: getDemoContextText(),
+      },
     });
-
-    console.log(
-      JSON.stringify({
-        event: "twilio.gather.runtime_result",
-        utterance: speechResult,
-        context: runtimeContext,
-        intent: runtimeResult.intent,
-        action: runtimeResult.action,
-        slots: runtimeResult.slots,
-        mcp: runtimeResult.mcp,
-        responseText: runtimeResult.responseText,
-      }),
-    );
 
     const useSarvamPlayback =
       process.env.TELEPHONY_USE_SARVAM_TTS === "true" && Boolean(process.env.SARVAM_API_KEY);
@@ -90,11 +84,11 @@ export async function POST(request: Request) {
 
     console.log(
       JSON.stringify({
-        event: "twilio.gather.tts_reply",
-        useSarvamPlayback,
-        audioUrl,
-        languageCode,
-        fallbackSayText: runtimeResult.responseText,
+        event: "twilio.demo.gather.runtime_result",
+        utterance: speechResult,
+        responseText: runtimeResult.responseText,
+        intent: runtimeResult.intent,
+        action: runtimeResult.action,
       }),
     );
 
@@ -108,11 +102,7 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
-    console.error("twilio gather failed", error);
-    const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
-    const gatherAction = `${baseUrl}/api/telephony/twilio/gather`;
-    const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
-
+    console.error("twilio demo gather failed", error);
     return twimlResponse(
       playAudioOrSayTwiml({
         message: "We are facing a technical issue. Please try again in a while.",

@@ -8,8 +8,17 @@ type ChatMessage = {
   text: string;
 };
 
+type DemoContextResponse = {
+  text?: string;
+  error?: string;
+  demoPhoneNumber?: string;
+  demoWebhookUrl?: string;
+};
+
 export default function DemoPage() {
   const [contextText, setContextText] = useState("");
+  const [demoPhoneNumber, setDemoPhoneNumber] = useState("");
+  const [demoWebhookUrl, setDemoWebhookUrl] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -24,8 +33,10 @@ export default function DemoPage() {
   useEffect(() => {
     void fetch("/api/demo/context")
       .then((res) => res.json())
-      .then((data: { text?: string }) => {
+      .then((data: DemoContextResponse) => {
         setContextText(data.text || "");
+        setDemoPhoneNumber(data.demoPhoneNumber || "");
+        setDemoWebhookUrl(data.demoWebhookUrl || "");
       })
       .catch(() => {
         // Keep page usable even if context fetch fails.
@@ -42,11 +53,13 @@ export default function DemoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: contextText }),
       });
-      const data = (await res.json()) as { text?: string; error?: string };
+      const data = (await res.json()) as DemoContextResponse;
       if (!res.ok) {
         throw new Error(data.error || "Failed to save context.");
       }
       setContextText(data.text || contextText);
+      setDemoPhoneNumber(data.demoPhoneNumber || demoPhoneNumber);
+      setDemoWebhookUrl(data.demoWebhookUrl || demoWebhookUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save context.");
     } finally {
@@ -67,21 +80,7 @@ export default function DemoPage() {
       const res = await fetch("/api/demo/turn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          context: {
-            knowledgeBaseId: "demo-barber",
-            businessInfo: {
-              name: "VoiceDesk Demo Business",
-              openingHours: "9 AM - 9 PM",
-              address: "Ahmedabad, Gujarat",
-              servicePricing: [
-                { service: "Haircut", price: "199 INR" },
-                { service: "Beard Trim", price: "99 INR" },
-              ],
-            },
-          },
-        }),
+        body: JSON.stringify({ message }),
       });
 
       const data = (await res.json()) as { responseText?: string; error?: string };
@@ -110,7 +109,7 @@ export default function DemoPage() {
           <div>
             <h1 className="text-3xl font-semibold">Try Demo Chat</h1>
             <p className="mt-1 text-sm text-slate-400">
-              One context textbox controls website demo and current Twilio runtime responses.
+              One context textbox controls website demo and demo-phone webhook responses.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -127,6 +126,21 @@ export default function DemoPage() {
         </div>
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <h2 className="text-lg font-semibold">Demo Number</h2>
+          <p className="mt-1 text-sm text-slate-300">
+            {demoPhoneNumber ? `Call ${demoPhoneNumber}` : "Demo number is not configured yet."}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Calls to this number hit a dedicated demo webhook and respond only from the context text below.
+          </p>
+          {demoWebhookUrl && (
+            <p className="mt-2 rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-300">
+              Webhook: {demoWebhookUrl}
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Context Text</h2>
             <button
@@ -138,7 +152,7 @@ export default function DemoPage() {
             </button>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            Keep this short and factual. The Twilio number will answer using this context.
+            Keep this short and factual. The demo Twilio number will answer using only this context.
           </p>
           <textarea
             value={contextText}
