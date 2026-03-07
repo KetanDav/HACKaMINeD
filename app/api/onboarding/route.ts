@@ -22,6 +22,15 @@ function isValidTier(tier: number) {
   return Number.isInteger(tier) && tier >= 1 && tier <= 4;
 }
 
+function extractErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybe = error as { message?: string; details?: string; hint?: string };
+    return maybe.message || maybe.details || maybe.hint || "Failed to save onboarding details.";
+  }
+  return "Failed to save onboarding details.";
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -112,7 +121,8 @@ export async function POST(request: Request) {
     );
 
     if (factError) {
-      throw factError;
+      // Keep onboarding flow unblocked if this optional write fails due schema drift.
+      console.warn("selected_tier persistence skipped", factError);
     }
 
     return NextResponse.json({
@@ -123,7 +133,7 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("onboarding create failed", error);
-    const message = error instanceof Error ? error.message : "Failed to save onboarding details.";
+    const message = extractErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
