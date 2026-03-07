@@ -4,6 +4,10 @@ function normalizePhone(value: string) {
   return value.replace(/[^+\d]/g, "").trim();
 }
 
+function getExpectedDemoNumber() {
+  return normalizePhone(process.env.TWILIO_DEMO_PHONE_NUMBER || "");
+}
+
 function getExternalUrl(request: Request) {
   const fallback = new URL(request.url);
   const proto = request.headers.get("x-forwarded-proto") || fallback.protocol.replace(":", "");
@@ -46,7 +50,7 @@ function isValidTwilioSignature(input: { signature: string; payload: string; aut
 
 export function isAllowedDemoTwilioSource(form: FormData) {
   const expectedAccountSid = process.env.TWILIO_DEMO_ACCOUNT_SID?.trim();
-  const expectedNumber = normalizePhone(process.env.TWILIO_DEMO_PHONE_NUMBER || "");
+  const expectedNumber = getExpectedDemoNumber();
 
   const accountSid = String(form.get("AccountSid") || "").trim();
   const toNumber = normalizePhone(String(form.get("To") || ""));
@@ -56,6 +60,26 @@ export function isAllowedDemoTwilioSource(form: FormData) {
   }
 
   if (expectedNumber && toNumber && expectedNumber !== toNumber) {
+    return false;
+  }
+
+  return true;
+}
+
+export function isInboundToDemoNumber(form: FormData) {
+  const expectedNumber = getExpectedDemoNumber();
+  if (!expectedNumber) {
+    return false;
+  }
+
+  const toNumber = normalizePhone(String(form.get("To") || ""));
+  if (!toNumber || toNumber !== expectedNumber) {
+    return false;
+  }
+
+  const expectedAccountSid = process.env.TWILIO_DEMO_ACCOUNT_SID?.trim();
+  const accountSid = String(form.get("AccountSid") || "").trim();
+  if (expectedAccountSid && accountSid && expectedAccountSid !== accountSid) {
     return false;
   }
 

@@ -1,4 +1,5 @@
 import { gatherSpeechTwiml, twimlResponse } from "@/lib/telephony/twiml";
+import { isInboundToDemoNumber } from "@/lib/telephony/twilioDemoValidation";
 
 export const runtime = "nodejs";
 
@@ -22,19 +23,25 @@ function buildVoiceResponse() {
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
+    const isDemoInbound = isInboundToDemoNumber(form);
 
     const payloadEntries = Object.fromEntries(form.entries());
     const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
-    const actionUrl = `${baseUrl}/api/telephony/twilio/gather`;
+    const actionUrl = isDemoInbound
+      ? `${baseUrl}/api/telephony/twilio/demo/gather`
+      : `${baseUrl}/api/telephony/twilio/gather`;
     const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
     const welcomePrompt =
-      process.env.TELEPHONY_WELCOME_PROMPT ||
+      (isDemoInbound
+        ? process.env.TELEPHONY_DEMO_WELCOME_PROMPT
+        : process.env.TELEPHONY_WELCOME_PROMPT) ||
       "Welcome to VoiceDesk AI support. Please tell me your question.";
 
     console.log(
       JSON.stringify({
         event: "twilio.voice.request",
         path: "/api/telephony/twilio/voice",
+        isDemoInbound,
         payload: payloadEntries,
       }),
     );

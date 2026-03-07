@@ -1,5 +1,10 @@
 import { runRuntimeTurn } from "@/lib/runtime/orchestrator";
+import { getDemoContextText } from "@/lib/demoContextStore";
 import { getDefaultRuntimeContext } from "@/lib/telephony/context";
+import {
+  isDemoTwilioSignatureValid,
+  isInboundToDemoNumber,
+} from "@/lib/telephony/twilioDemoValidation";
 import { playAudioOrSayTwiml, twimlResponse } from "@/lib/telephony/twiml";
 
 export const runtime = "nodejs";
@@ -26,22 +31,34 @@ export async function POST(request: Request) {
 
     const payloadEntries = Object.fromEntries(form.entries());
     const speechResult = getSpeechFromForm(form);
+    const isDemoInbound = isInboundToDemoNumber(form);
     const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
-    const gatherAction = `${baseUrl}/api/telephony/twilio/gather`;
-    const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
+    const gatherAction = isDemoInbound
+      ? `${baseUrl}/api/telephony/twilio/demo/gather`
+      : `${baseUrl}/api/telephony/twilio/gather`;
+    const languageCode =
+      (isDemoInbound ? process.env.TELEPHONY_DEMO_LANGUAGE_CODE : process.env.TELEPHONY_LANGUAGE_CODE) ||
+      "en-IN";
     const noInputPrompt =
-      process.env.TELEPHONY_NO_INPUT_PROMPT || "I did not catch that. Please repeat your query.";
+      (isDemoInbound ? process.env.TELEPHONY_DEMO_NO_INPUT_PROMPT : process.env.TELEPHONY_NO_INPUT_PROMPT) ||
+      "I did not catch that. Please repeat your query.";
     const followupPrompt =
-      process.env.TELEPHONY_FOLLOWUP_PROMPT || "You can ask another question.";
+      (isDemoInbound ? process.env.TELEPHONY_DEMO_FOLLOWUP_PROMPT : process.env.TELEPHONY_FOLLOWUP_PROMPT) ||
+      "You can ask another question.";
 
     console.log(
       JSON.stringify({
         event: "twilio.gather.request",
         path: "/api/telephony/twilio/gather",
+        isDemoInbound,
         languageCode,
         payload: payloadEntries,
       }),
     );
+
+    if (isDemoInbound && !isDemoTwilioSignatureValid(request, form)) {
+      return new Response("Invalid Twilio signature", { status: 403 });
+    }
 
     if (!speechResult) {
       console.log(
@@ -62,7 +79,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const runtimeContext = getDefaultRuntimeContext();
+    const runtimeContext = isDemoInbound
+      ? {
+          customContextText: getDemoContextText(),
+        }
+      : getDefaultRuntimeContext();
     const runtimeResult = await runRuntimeTurn({
       utterance: speechResult,
       languageCode,
