@@ -1,6 +1,6 @@
-# Vercel + Exotel + Sarvam Setup (No ngrok)
+# Vercel + Twilio + Sarvam Setup (No ngrok)
 
-This guide lets you run your VoiceDesk APIs on Vercel and connect Exotel directly to your Vercel URL.
+This guide lets you run your VoiceDesk APIs on Vercel and connect Twilio directly to your Vercel URL.
 
 ## 1) Deploy to Vercel
 
@@ -76,16 +76,14 @@ Add these variables:
 - `RUNTIME_DEFAULT_ORDERS`
   - Value format: `123:out for delivery:today evening;456:processing:tomorrow`
 
-### Exotel settings (for webhook/security or future API actions)
+### Twilio settings (for webhook/security or future API actions)
 
-- `EXOTEL_SID`
-  - Source: Exotel dashboard account SID
-- `EXOTEL_API_KEY`
-  - Source: Exotel API credentials page
-- `EXOTEL_API_TOKEN`
-  - Source: Exotel API credentials page
-- `EXOTEL_VIRTUAL_NUMBER`
-  - Source: Exotel number management panel
+- `TWILIO_ACCOUNT_SID`
+  - Source: Twilio Console Dashboard
+- `TWILIO_AUTH_TOKEN`
+  - Source: Twilio Console Dashboard
+- `TWILIO_PHONE_NUMBER`
+  - Source: Twilio Active Numbers list
 
 ### Existing app settings (if you use them)
 
@@ -98,16 +96,16 @@ Add these variables:
 
 ---
 
-## 3) Exotel Webhook URL Setup
+## 3) Twilio Webhook URL Setup
 
-In Exotel voice flow/webhook configuration, set webhook URL to:
+In Twilio Active Numbers configuration, under Voice Configuration, set the webhook URL for "A Call Comes In" to:
 
-- `POST https://your-project-name.vercel.app/api/telephony/exotel/voice`
+- `POST https://your-project-name.vercel.app/api/telephony/twilio/voice`
 
 The app will then route to:
 
-- `/api/telephony/exotel/gather`
-- `/api/telephony/exotel/sarvam-tts`
+- `/api/telephony/twilio/gather`
+- `/api/telephony/twilio/sarvam-tts`
 
 No ngrok required once this is on Vercel.
 
@@ -128,10 +126,10 @@ For reliable production behavior, migrate KB storage to:
 
 1. Open:
 
-- `https://your-project-name.vercel.app/api/telephony/exotel/voice` (POST expected by Exotel)
+- `https://your-project-name.vercel.app/api/telephony/twilio/voice` (POST expected by Twilio)
 
 2. In app, complete onboarding and copy `knowledgeBaseId`.
 
 3. Set `RUNTIME_DEFAULT_KB_ID` in Vercel env and redeploy.
 
-4. Call Exotel number and ask KB questions.
+4. Call Twilio number and ask KB questions.

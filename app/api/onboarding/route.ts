@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     const enableDashboard = Boolean(
       payload.tier === 3 ||
-        (payload.tier === 4 && Boolean(payload.integrationConfig?.enableDashboard)),
+      (payload.tier === 4 && Boolean(payload.integrationConfig?.enableDashboard)),
     );
 
     const dashboardUrl = enableDashboard
@@ -130,28 +130,58 @@ export async function POST(request: Request) {
     };
 
     try {
-      record = await prisma.onboardingSubmission.create({
+      // 1. Create the new Tenant
+      const tenant = await prisma.tenant.create({
         data: {
-          businessName: payload.business.businessName,
-          ownerName: payload.business.ownerName,
-          email: payload.business.email,
-          phone: payload.business.phone,
+          name: payload.business.businessName,
+          industry: payload.business.category,
           city: payload.business.city,
-          category: payload.business.category,
           tier: tierPlan,
-          kbFiles: payload.kbFiles as any,
-          integrationConfig: payload.integrationConfig as any,
-          provisionedNumber,
-          dashboardUrl,
-        },
-        select: {
-          id: true,
-          provisionedNumber: true,
-          dashboardUrl: true,
-          createdAt: true,
+          contactEmail: payload.business.email,
+          contactPhone: payload.business.phone,
+          websiteUrl: dashboardUrl,
+          // You could also create initial integrations based on payload.integrationConfig
+          // but for now we just store the essential Tenant data.
         },
       });
-    } catch {
+
+      // 2. Link a Twilio Phone Number
+      // (If TWILIO_PHONE_NUMBER is set, use it; otherwise mock a number for the UI)
+      const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+      let finalNumber = provisionedNumber;
+
+      if (twilioNumber) {
+        finalNumber = twilioNumber;
+        await prisma.phoneNumber.upsert({
+          where: { number: twilioNumber },
+          update: { tenantId: tenant.id },
+          create: {
+            tenantId: tenant.id,
+            number: twilioNumber,
+            provider: "twilio",
+            status: "active",
+          },
+        });
+      } else {
+        await prisma.phoneNumber.create({
+          data: {
+            tenantId: tenant.id,
+            number: provisionedNumber,
+            provider: "mock",
+            status: "active",
+          },
+        });
+      }
+
+      record = {
+        id: tenant.id,
+        provisionedNumber: finalNumber,
+        dashboardUrl,
+        createdAt: tenant.createdAt,
+      };
+
+    } catch (e) {
+      console.error("Failed to create tenant record:", e);
       record = {
         id: `local_${Date.now()}`,
         provisionedNumber,
@@ -162,6 +192,7 @@ export async function POST(request: Request) {
 
     let kbIngestion: { filesProcessed: number; chunksCreated: number } | null = null;
     if (payload.kbFileObjects.length > 0) {
+      // Pass the tenant.id to the indexer so it creates Policy records for this specific tenant
       kbIngestion = await ingestKnowledgeBase(record.id, payload.kbFileObjects);
     }
 

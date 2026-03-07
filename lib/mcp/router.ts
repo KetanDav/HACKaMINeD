@@ -7,6 +7,7 @@ export type RuntimeBusinessContext = {
     address?: string;
     openingHours?: string;
     servicePricing?: Array<{ service: string; price: string }>;
+    escalationPhone?: string;
   };
   appointments?: Array<{ date: string; time: string; name?: string }>;
   orders?: Array<{ orderId: string; status: string; eta?: string }>;

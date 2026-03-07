@@ -7,9 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Enums ─────────────────────────────────────────
+
 enum BusinessCategory {
   doctor
   hotel
+  barber
+  restaurant
+  ecommerce
+  repair
+  other
 }
 
 enum TierPlan {
@@ -19,21 +26,189 @@ enum TierPlan {
   TIER_4
 }
 
+// ── Tenant ────────────────────────────────────────
+
+model Tenant {
+  id              String   @id @default(cuid())
+  name            String
+  industry        String?
+  address         String?
+  city            String?
+  defaultLanguage String   @default("en-IN")
+  tier            TierPlan @default(TIER_1)
+  escalationPhone String?
+  openingHours    String?
+  contactPhone    String?
+  contactEmail    String?
+  websiteUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  services       Service[]
+  staff          Staff[]
+  faqs           Faq[]
+  policies       Policy[]
+  phoneNumbers   PhoneNumber[]
+  integrations   Integration[]
+  calls          Call[]
+  appointments   Appointment[]
+
+  @@map("tenants")
+}
+
+// ── Structured Business Data (MCP-served) ─────────
+
+model Service {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  name      String
+  price     String
+  duration  String?
+  available Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("services")
+}
+
+model Staff {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  name      String
+  role      String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("staff")
+}
+
+// ── Free-form Knowledge (RAG-served) ──────────────
+
+model Faq {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("faqs")
+}
+
+model Policy {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("policies")
+}
+
+model PhoneNumber {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  number    String   @unique
+  provider  String   @default("twilio")
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  @@map("phone_numbers")
+}
+
+// ── Calls & Events ────────────────────────────────
+
+model Call {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  callSid       String    @unique
+  callerNumber  String
+  dialedNumber  String
+  status        String    @default("in_progress")
+  turnCount     Int       @default(0)
+  escalated     Boolean   @default(false)
+  summary       String?
+  languageCode  String    @default("en-IN")
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+
+  events CallEvent[]
+
+  @@index([tenantId])
+  @@index([startedAt])
+  @@map("calls")
+}
+
+model CallEvent {
+  id        String   @id @default(cuid())
+  callId    String
+  call      Call     @relation(fields: [callId], references: [id])
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([callId])
+  @@map("call_events")
+}
+
+// ── Appointments ──────────────────────────────────
+
+model Appointment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  phone     String?
+  date      String
+  time      String
+  status    String   @default("confirmed")
+  callSid   String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, date])
+  @@map("appointments")
+}
+
+// ── Integrations ──────────────────────────────────
+
+model Integration {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  action        String
+  connectorType String
+  config        Json
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, action])
+  @@map("integrations")
+}
+
+// ── Legacy (keep for backwards compatibility) ─────
+
 model OnboardingSubmission {
-  id               String           @id @default(cuid())
-  businessName     String
-  ownerName        String
-  email            String
-  phone            String
-  city             String
-  category         BusinessCategory
-  tier             TierPlan
-  kbFiles          Json
+  id                String           @id @default(cuid())
+  businessName      String
+  ownerName         String
+  email             String
+  phone             String
+  city              String
+  category          BusinessCategory
+  tier              TierPlan
+  kbFiles           Json
   integrationConfig Json
   provisionedNumber String
-  dashboardUrl     String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  dashboardUrl      String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([email])
   @@index([tier])

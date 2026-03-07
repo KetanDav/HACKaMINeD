@@ -9,32 +9,6 @@ function cleanText(text: string) {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function chunkText(text: string, sourceFile: string, size = 800, overlap = 120) {
-  const chunks: KBChunk[] = [];
-  if (!text) return chunks;
-
-  let start = 0;
-  let index = 0;
-
-  while (start < text.length) {
-    const end = Math.min(text.length, start + size);
-    const part = cleanText(text.slice(start, end));
-    if (part.length > 0) {
-      chunks.push({
-        id: randomUUID(),
-        sourceFile,
-        text: part,
-        index,
-      });
-      index += 1;
-    }
-    if (end === text.length) break;
-    start = Math.max(end - overlap, start + 1);
-  }
-
-  return chunks;
-}
-
 async function extractText(file: File) {
   const ext = path.extname(file.name).toLowerCase();
   const arrayBuffer = await file.arrayBuffer();
@@ -54,30 +28,33 @@ async function extractText(file: File) {
   return "";
 }
 
-export async function ingestKnowledgeBase(knowledgeBaseId: string, files: File[]) {
-  await ensureKbDirs(knowledgeBaseId);
-
-  const allChunks: KBChunk[] = [];
+/**
+ * Extracts text from uploaded files and stores them directly into the PostgreSQL
+ * database as `Policy` records. This bypasses the need for local disk storage,
+ * which is incompatible with Vercel's serverless environment.
+ */
+export async function ingestKnowledgeBase(tenantId: string, files: File[]) {
+  const { prisma } = await import("@/lib/prisma");
+  let chunksCreated = 0;
 
   for (const file of files) {
-    const uploadPath = path.join(getKbUploadsDir(knowledgeBaseId), file.name);
-    const arrayBuffer = await file.arrayBuffer();
-    await writeFile(uploadPath, Buffer.from(arrayBuffer));
-
     const extracted = await extractText(file);
-    const chunks = chunkText(extracted, file.name);
-    allChunks.push(...chunks);
+    if (!extracted) continue;
+
+    // We store the full extracted text as a single "Policy" to be searched later
+    await prisma.policy.create({
+      data: {
+        tenantId,
+        title: `Uploaded Document: ${file.name}`,
+        content: extracted,
+      },
+    });
+
+    chunksCreated++;
   }
 
-  const index: KBIndex = {
-    knowledgeBaseId,
-    createdAt: new Date().toISOString(),
-    chunks: allChunks,
-  };
-
-  await saveKbIndex(index);
   return {
     filesProcessed: files.length,
-    chunksCreated: allChunks.length,
+    chunksCreated,
   };
 }

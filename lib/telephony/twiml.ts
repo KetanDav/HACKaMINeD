@@ -61,3 +61,18 @@ export function playAudioOrSayTwiml(input: {
     <Redirect method="POST">${action}</Redirect>
   `;
 }
+
+export function escalateTwiml(input: {
+  message: string;
+  phoneNumber: string;
+  languageCode?: string;
+}) {
+  const message = escapeXml(input.message);
+  const phone = escapeXml(input.phoneNumber);
+  const languageCode = escapeXml(input.languageCode || "en-IN");
+
+  return `
+    <Say voice="alice" language="${languageCode}">${message}</Say>
+    <Dial>${phone}</Dial>
+  `;
+}

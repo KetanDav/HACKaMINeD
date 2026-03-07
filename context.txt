@@ -192,7 +192,7 @@ AI checks order database.
 Architecture (Judges Love This)
 Customer Call
      ↓
-Telephony API (Twilio / Exotel)
+Telephony API (Twilio)
      ↓
 Speech-to-Text (Sarvam / Whisper)
      ↓
@@ -258,7 +258,7 @@ Phone calls need providers like:
 
 Twilio
 
-Exotel
+Twilio
 
 But you can simulate.
 
@@ -549,7 +549,7 @@ subscription logic
 Architecture Judges Will Love
 Customer Call
      ↓
-Telephony API (Twilio / Exotel)
+Telephony API (Twilio)
      ↓
 Speech-to-Text (Sarvam / Whisper)
      ↓

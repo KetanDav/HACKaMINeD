@@ -183,7 +183,7 @@ It provides each business a phone number and handles customer calls in regional 
 
 ```mermaid
 flowchart TD
-  A[Caller] --> B[Telephony Provider\nTwilio/Exotel]
+  A[Caller] --> B[Telephony Provider\nTwilio]
   B --> C[API Gateway\nIncoming Webhook]
   C --> D[Call Service]
   D --> E[STT Service]
