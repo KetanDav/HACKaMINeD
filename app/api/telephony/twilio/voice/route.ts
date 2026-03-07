@@ -1,4 +1,4 @@
-import { gatherSpeechTwiml, recordSpeechTwiml, twimlResponse } from "@/lib/telephony/twiml";
+import { gatherSpeechTwiml, twimlResponse } from "@/lib/telephony/twiml";
 import { isInboundToDemoNumber } from "@/lib/telephony/twilioDemoValidation";
 import { isAllowedProdTwilioSource, isProdTwilioSignatureValid } from "@/lib/telephony/twilioProdValidation";
 import { loadRuntimeContextFromInboundNumber } from "@/lib/runtime/businessContext";
@@ -7,13 +7,20 @@ export const runtime = "nodejs";
 
 function defaultWelcomeByLanguage(languageCode: string, companyName: string) {
   const normalized = (languageCode || "en-IN").toLowerCase();
+  const name = companyName || "";
   if (normalized.startsWith("hi")) {
-    return `${companyName} me aapka swagat hai. Kripya apna sawaal batayein.`;
+    return name
+      ? `${name} me aapka swagat hai. Kripya apna sawaal batayein.`
+      : "Namaste. Kripya apna sawaal batayein.";
   }
   if (normalized.startsWith("gu")) {
-    return `${companyName} ma tamaru swagat chhe. Krupaya tamaro prashn kahesho.`;
+    return name
+      ? `${name} ma tamaru swagat chhe. Krupaya tamaro prashn kahesho.`
+      : "Namaste. Krupaya tamaro prashn kahesho.";
   }
-  return `Welcome to ${companyName}. Please tell me your question.`;
+  return name
+    ? `Welcome to ${name}. Please tell me your question.`
+    : "Welcome. Please tell me your question.";
 }
 
 function buildVoiceResponse({
@@ -25,21 +32,12 @@ function buildVoiceResponse({
   languageCode: string;
   welcomePrompt: string;
 }) {
-  const useSarvamStt = process.env.TELEPHONY_USE_SARVAM_STT === "true" && Boolean(process.env.SARVAM_API_KEY);
-
   return twimlResponse(
-    useSarvamStt
-      ? recordSpeechTwiml({
-          actionUrl,
-          prompt: welcomePrompt,
-          languageCode,
-          maxLengthSeconds: Number(process.env.TELEPHONY_RECORD_MAX_SECONDS || 20),
-        })
-      : gatherSpeechTwiml({
-          actionUrl,
-          prompt: welcomePrompt,
-          languageCode,
-        }),
+    gatherSpeechTwiml({
+      actionUrl,
+      prompt: welcomePrompt,
+      languageCode,
+    }),
   );
 }
 
@@ -49,7 +47,6 @@ export async function POST(request: Request) {
   let actionUrl = `${baseUrl}/api/telephony/twilio/gather`;
   let languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
   let welcomePrompt = process.env.TELEPHONY_WELCOME_PROMPT || "Welcome. Please tell me your question.";
-
   try {
     const form = await request.formData();
     isDemoInbound = isInboundToDemoNumber(form);
@@ -76,7 +73,7 @@ export async function POST(request: Request) {
     const runtimeContext = !isDemoInbound && toNumber
       ? await loadRuntimeContextFromInboundNumber(toNumber)
       : {};
-    const companyName = runtimeContext.businessInfo?.name?.trim() || "Callify";
+    const companyName = runtimeContext.businessInfo?.name?.trim() || "";
 
     welcomePrompt =
       (isDemoInbound

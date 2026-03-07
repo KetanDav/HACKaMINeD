@@ -25,10 +25,10 @@ export function gatherSpeechTwiml(input: {
   const languageCode = escapeXml(input.languageCode || "en-IN");
 
   return `
-    <Gather input="speech" speechTimeout="auto" action="${action}" method="POST" language="${languageCode}">
+    <Gather input="speech" speechTimeout="3" action="${action}" method="POST" language="${languageCode}">
       <Say voice="alice" language="${languageCode}">${prompt}</Say>
     </Gather>
-    <Redirect method="POST">${action}</Redirect>
+    <Say voice="alice" language="${languageCode}">I did not hear anything. Goodbye.</Say>
   `;
 }
 
@@ -78,10 +78,10 @@ export function playAudioOrSayTwiml(input: {
   return `
     ${voicePart}
     <Pause length="1"/>
-    <Gather input="speech" speechTimeout="auto" action="${action}" method="POST" language="${languageCode}">
+    <Gather input="speech" speechTimeout="3" action="${action}" method="POST" language="${languageCode}">
       ${gatherPromptPart}
     </Gather>
-    <Redirect method="POST">${action}</Redirect>
+    <Say voice="alice" language="${languageCode}">I did not hear anything. Goodbye.</Say>
   `;
 }
 

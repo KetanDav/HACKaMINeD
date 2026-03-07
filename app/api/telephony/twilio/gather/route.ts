@@ -11,13 +11,10 @@ import {
 } from "@/lib/telephony/twilioProdValidation";
 import {
   escalateTwiml,
-  playAudioOrSayThenRecordTwiml,
   playAudioOrSayTwiml,
   twimlResponse,
 } from "@/lib/telephony/twiml";
 import { loadRuntimeContextFromInboundNumber } from "@/lib/runtime/businessContext";
-import { fetchTwilioRecordingBase64 } from "@/lib/telephony/twilioRecording";
-import { SarvamClient } from "@/lib/sarvam/client";
 import { processConversationTurn } from "@/lib/session/conversation";
 
 export const runtime = "nodejs";
@@ -54,10 +51,6 @@ function getSpeechFromForm(form: FormData) {
   );
 }
 
-function getRecordingUrlFromForm(form: FormData) {
-  return String(form.get("RecordingUrl") || "").trim();
-}
-
 function getCallSid(form: FormData) {
   return String(form.get("CallSid") || form.get("callSid") || "").trim();
 }
@@ -68,7 +61,6 @@ export async function POST(request: Request) {
 
     const payloadEntries = Object.fromEntries(form.entries());
     let speechResult = getSpeechFromForm(form);
-    const recordingUrl = getRecordingUrlFromForm(form);
     const callSid = getCallSid(form) || `call_${Date.now()}`;
     const isDemoInbound = isInboundToDemoNumber(form);
     const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
@@ -84,7 +76,6 @@ export async function POST(request: Request) {
     const followupPrompt =
       (isDemoInbound ? process.env.TELEPHONY_DEMO_FOLLOWUP_PROMPT : process.env.TELEPHONY_FOLLOWUP_PROMPT) ||
       getDefaultFollowupPrompt(languageCode);
-    const useSarvamStt = process.env.TELEPHONY_USE_SARVAM_STT === "true" && Boolean(process.env.SARVAM_API_KEY);
 
     console.log(
       JSON.stringify({
@@ -110,36 +101,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (useSarvamStt) {
-      const accountSid = isDemoInbound
-        ? process.env.TWILIO_DEMO_ACCOUNT_SID
-        : process.env.TWILIO_PROD_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID;
-      const authToken = isDemoInbound
-        ? process.env.TWILIO_DEMO_AUTH_TOKEN
-        : process.env.TWILIO_PROD_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN;
-
-      if (recordingUrl) {
-        try {
-          const recording = await fetchTwilioRecordingBase64({
-            recordingUrl,
-            accountSid,
-            authToken,
-          });
-
-          const sarvam = new SarvamClient();
-          const stt = await sarvam.transcribe({
-            audioBase64: recording.audioBase64,
-            languageCode,
-            format: "wav",
-          });
-
-          speechResult = stt.transcript;
-        } catch (sttError) {
-          console.error("sarvam stt failed", sttError);
-        }
-      }
-    }
-
     if (!speechResult) {
       console.log(
         JSON.stringify({
@@ -150,19 +111,12 @@ export async function POST(request: Request) {
       );
 
       return twimlResponse(
-        useSarvamStt
-          ? playAudioOrSayThenRecordTwiml({
-              message: noInputPrompt,
-              actionUrl: gatherAction,
-              languageCode,
-              followupPrompt,
-            })
-          : playAudioOrSayTwiml({
-              message: noInputPrompt,
-              actionUrl: gatherAction,
-              languageCode,
-              followupPrompt,
-            }),
+        playAudioOrSayTwiml({
+          message: noInputPrompt,
+          actionUrl: gatherAction,
+          languageCode,
+          followupPrompt,
+        }),
       );
     }
 
@@ -220,21 +174,13 @@ export async function POST(request: Request) {
     );
 
     return twimlResponse(
-      useSarvamStt
-        ? playAudioOrSayThenRecordTwiml({
-            message: conversation.text,
-            actionUrl: gatherAction,
-            audioUrl,
-            languageCode,
-            followupPrompt,
-          })
-        : playAudioOrSayTwiml({
-            message: conversation.text,
-            actionUrl: gatherAction,
-            audioUrl,
-            languageCode,
-            followupPrompt,
-          }),
+      playAudioOrSayTwiml({
+        message: conversation.text,
+        actionUrl: gatherAction,
+        audioUrl,
+        languageCode,
+        followupPrompt,
+      }),
     );
   } catch (error) {
     console.error("twilio gather failed", error);
@@ -242,21 +188,13 @@ export async function POST(request: Request) {
     const gatherAction = `${baseUrl}/api/telephony/twilio/gather`;
     const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
 
-    const useSarvamStt = process.env.TELEPHONY_USE_SARVAM_STT === "true" && Boolean(process.env.SARVAM_API_KEY);
     return twimlResponse(
-      useSarvamStt
-        ? playAudioOrSayThenRecordTwiml({
-            message: "We are facing a technical issue. Please try again in a while.",
-            actionUrl: gatherAction,
-            languageCode,
-            followupPrompt: "",
-          })
-        : playAudioOrSayTwiml({
-            message: "We are facing a technical issue. Please try again in a while.",
-            actionUrl: gatherAction,
-            languageCode,
-            followupPrompt: "",
-          }),
+      playAudioOrSayTwiml({
+        message: "We are facing a technical issue. Please try again in a while.",
+        actionUrl: gatherAction,
+        languageCode,
+        followupPrompt: "",
+      }),
     );
   }
 }
