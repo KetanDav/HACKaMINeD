@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -14,7 +15,8 @@ export async function GET() {
   }
 
   // Also fetch the business profile if it exists
-  const { data: profile } = await supabase
+  const admin = getSupabaseAdmin();
+  const { data: profile } = await admin
     .from("business_profiles")
     .select("*")
     .eq("user_id", user.id)

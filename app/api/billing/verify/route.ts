@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCashfree } from "@/lib/cashfree/client";
 
 export async function POST(request: Request) {
@@ -22,8 +23,10 @@ export async function POST(request: Request) {
     );
   }
 
+  const admin = getSupabaseAdmin();
+
   // Fetch our payment record
-  const { data: payment } = await supabase
+  const { data: payment } = await admin
     .from("payments")
     .select("*")
     .eq("order_id", orderId)
@@ -54,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     // Update payment record
-    await supabase
+    await admin
       .from("payments")
       .update({
         status: newStatus,
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
 
     // If paid, activate business plan.
     if (newStatus === "SUCCESS") {
-      await supabase
+      await admin
         .from("business_profiles")
         .update({ plan_status: "active" })
         .eq("id", payment.business_profile_id);

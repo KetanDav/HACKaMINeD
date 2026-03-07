@@ -62,7 +62,7 @@ function SignupForm() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-8"
       >
-        <h1 className="text-2xl font-semibold">Create your VoiceDesk account</h1>
+        <h1 className="text-2xl font-semibold">Create your Callify account</h1>
         <p className="mt-2 text-sm text-slate-400">
           Sign up to set up AI voice support for your business.
         </p>

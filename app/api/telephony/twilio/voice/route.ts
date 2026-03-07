@@ -9,7 +9,7 @@ function buildVoiceResponse() {
   const languageCode = process.env.TELEPHONY_LANGUAGE_CODE || "en-IN";
   const welcomePrompt =
     process.env.TELEPHONY_WELCOME_PROMPT ||
-    "Welcome to VoiceDesk AI support. Please tell me your question.";
+    "Welcome to Callify AI support. Please tell me your question.";
 
   return twimlResponse(
     gatherSpeechTwiml({

@@ -50,7 +50,7 @@ function LoginForm() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-8"
       >
-        <h1 className="text-2xl font-semibold">Sign in to VoiceDesk</h1>
+        <h1 className="text-2xl font-semibold">Sign in to Callify</h1>
         <p className="mt-2 text-sm text-slate-400">
           Access your business dashboard and manage AI voice support.
         </p>

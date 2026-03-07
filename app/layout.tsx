@@ -14,7 +14,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VoiceDesk",
+  title: "Callify",
   description: "Regional AI Voice Customer Care as a Service",
 };
 

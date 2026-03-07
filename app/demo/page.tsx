@@ -22,7 +22,7 @@ export default function DemoPage() {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
-            text: "Welcome to VoiceDesk web demo. Update the context text if needed, then ask a question.",
+            text: "Welcome to Callify web demo. Update the context text if needed, then ask a question.",
         },
     ]);
     const [input, setInput] = useState("");
@@ -169,8 +169,8 @@ export default function DemoPage() {
                                 <div
                                     key={`${msg.role}-${idx}`}
                                     className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${msg.role === "user"
-                                            ? "ml-auto bg-cyan-400 text-slate-900"
-                                            : "bg-white/10 text-slate-100"
+                                        ? "ml-auto bg-cyan-400 text-slate-900"
+                                        : "bg-white/10 text-slate-100"
                                         }`}
                                 >
                                     {msg.text}

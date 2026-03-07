@@ -15,7 +15,7 @@ const stats = [
 const features = [
   {
     title: "Voice + Action",
-    desc: "Callers speak naturally, VoiceDesk maps requests to business actions through MCP tools.",
+    desc: "Callers speak naturally, Callify maps requests to business actions through MCP tools.",
   },
   {
     title: "Tiered Growth",
@@ -55,7 +55,7 @@ const plans = [
     features: [
       "Everything in Tier 2",
       "Hosted dashboard at business.mydomain.in",
-      "Business operations on VoiceDesk AWS backend",
+      "Business operations on Callify AWS backend",
     ],
   },
   {
@@ -87,7 +87,7 @@ export default function Home() {
 
       <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <p className="text-lg font-semibold tracking-tight">VoiceDesk Cloud</p>
+          <p className="text-lg font-semibold tracking-tight">Callify</p>
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/demo" className="text-sm text-slate-300 transition hover:text-white">
               Try Demo
@@ -302,7 +302,7 @@ export default function Home() {
 
       <footer className="border-t border-white/10 py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 text-sm text-slate-400">
-          <p>VoiceDesk • AI Customer Care Infrastructure</p>
+          <p>Callify • AI Customer Care Infrastructure</p>
           <p>Demo site for tiered onboarding and AWS deployment readiness</p>
         </div>
       </footer>

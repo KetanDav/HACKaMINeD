@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +23,20 @@ export default async function DashboardPage() {
     redirect("/auth/login?redirect=/dashboard");
   }
 
-  const { data: profile } = await supabase
+  const admin = getSupabaseAdmin();
+
+  const { data: profile } = await admin
     .from("business_profiles")
     .select("id, business_name, category, city, phone, timezone, plan_status, created_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const { data: latestPayment } = await supabase
+  // Block dashboard access if payment not completed
+  if (!profile || profile.plan_status !== "active") {
+    redirect("/onboarding");
+  }
+
+  const { data: latestPayment } = await admin
     .from("payments")
     .select("tier, amount, currency, status, order_id, created_at")
     .eq("user_id", user.id)

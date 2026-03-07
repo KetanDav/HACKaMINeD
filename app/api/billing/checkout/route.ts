@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCashfree, getTierAmount } from "@/lib/cashfree/client";
 
 function getErrorMessage(error: unknown) {
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
     }
 
     // Verify the business belongs to this user.
-    const { data: profile, error: profileError } = await supabase
+    const admin = getSupabaseAdmin();
+    const { data: profile, error: profileError } = await admin
       .from("business_profiles")
       .select("id, business_name, plan_status")
       .eq("id", businessId)
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Business not found." }, { status: 404 });
     }
 
-    const orderId = `VD_${businessId.slice(0, 8)}_${Date.now()}`;
+    const orderId = `CF_${businessId.slice(0, 8)}_${Date.now()}`;
 
     const cashfree = getCashfree();
 
@@ -92,14 +94,14 @@ export async function POST(request: Request) {
       order_meta: {
         return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment_status=success&order_id=${orderId}`,
       },
-      order_note: `VoiceDesk Tier ${tier} - ${profile.business_name}`,
+      order_note: `Callify Tier ${tier} - ${profile.business_name}`,
     };
 
     const response = await cashfree.PGCreateOrder(orderRequest);
     const orderData = response.data;
 
     // Save payment record
-    const { error: insertPaymentError } = await supabase.from("payments").insert({
+    const { error: insertPaymentError } = await admin.from("payments").insert({
       business_profile_id: businessId,
       user_id: user.id,
       order_id: orderId,

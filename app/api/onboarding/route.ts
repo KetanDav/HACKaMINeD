@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const admin = getSupabaseAdmin();
+
     const body = (await request.json()) as OnboardingRequest;
     const business = body?.business;
     const tier = Number(body?.tier || 0);
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
       plan_status: "pending_payment",
     };
 
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile } = await admin
       .from("business_profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
     let businessId = "";
 
     if (existingProfile?.id) {
-      const { data: updated, error: updateError } = await supabase
+      const { data: updated, error: updateError } = await admin
         .from("business_profiles")
         .update(payload)
         .eq("id", existingProfile.id)
@@ -86,7 +89,7 @@ export async function POST(request: Request) {
 
       businessId = updated.id;
     } else {
-      const { data: inserted, error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await admin
         .from("business_profiles")
         .insert(payload)
         .select("id")
@@ -99,7 +102,7 @@ export async function POST(request: Request) {
       businessId = inserted.id;
     }
 
-    const { error: factError } = await supabase.from("business_facts").upsert(
+    const { error: factError } = await admin.from("business_facts").upsert(
       {
         business_profile_id: businessId,
         fact_key: "selected_tier",
@@ -137,7 +140,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const admin = getSupabaseAdmin();
+
+    const { data: profile, error: profileError } = await admin
       .from("business_profiles")
       .select("id, business_name, category, city, phone, timezone, system_prompt, plan_status, created_at")
       .eq("user_id", user.id)
@@ -147,14 +152,14 @@ export async function GET() {
       throw profileError;
     }
 
-    const { data: selectedTierFact } = await supabase
+    const { data: selectedTierFact } = await admin
       .from("business_facts")
       .select("fact_value")
       .eq("business_profile_id", profile?.id || "")
       .eq("fact_key", "selected_tier")
       .maybeSingle();
 
-    const { data: payments } = await supabase
+    const { data: payments } = await admin
       .from("payments")
       .select("id, order_id, amount, currency, tier, status, created_at")
       .eq("user_id", user.id)

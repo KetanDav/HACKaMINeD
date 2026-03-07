@@ -1,4 +1,4 @@
--- VoiceDesk simple schema (NO RLS version)
+-- Callify simple schema (NO RLS version)
 -- 1 user = 1 business
 -- Run as one script in Supabase SQL Editor
 

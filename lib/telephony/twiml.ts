@@ -20,7 +20,7 @@ export function gatherSpeechTwiml(input: {
   prompt?: string;
   languageCode?: string;
 }) {
-  const prompt = escapeXml(input.prompt || "Welcome to VoiceDesk. Please tell me how I can help you.");
+  const prompt = escapeXml(input.prompt || "Welcome to Callify. Please tell me how I can help you.");
   const action = escapeXml(input.actionUrl);
   const languageCode = escapeXml(input.languageCode || "en-IN");
 

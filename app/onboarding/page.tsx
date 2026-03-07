@@ -321,10 +321,10 @@ export default function OnboardingPage() {
                             <div
                                 key={label}
                                 className={`rounded-xl px-3 py-2 text-sm ${index === step
-                                        ? "bg-[#8be4ff] text-[#0f1f3a]"
-                                        : index < step
-                                            ? "bg-[#2a7ca8]/40 text-[#d2efff]"
-                                            : "bg-white/5 text-[#9fbbdf]"
+                                    ? "bg-[#8be4ff] text-[#0f1f3a]"
+                                    : index < step
+                                        ? "bg-[#2a7ca8]/40 text-[#d2efff]"
+                                        : "bg-white/5 text-[#9fbbdf]"
                                     }`}
                             >
                                 {index + 1}. {label}
@@ -409,8 +409,8 @@ export default function OnboardingPage() {
                                         type="button"
                                         onClick={() => setTier(plan.id)}
                                         className={`rounded-2xl border p-5 text-left transition ${tier === plan.id
-                                                ? "border-[#89ecff] bg-[#102c46] shadow-[0_0_0_1px_rgba(139,236,255,0.35)]"
-                                                : "border-white/15 bg-white/[0.03] hover:border-[#76bee9]/50"
+                                            ? "border-[#89ecff] bg-[#102c46] shadow-[0_0_0_1px_rgba(139,236,255,0.35)]"
+                                            : "border-white/15 bg-white/[0.03] hover:border-[#76bee9]/50"
                                             }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
