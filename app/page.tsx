@@ -35,7 +35,7 @@ const plans = [
     features: [
       "AI call answering from knowledge base",
       "One dedicated business number",
-      "Doctor/Hotel category support",
+      "Any business category support",
     ],
   },
   {
@@ -154,7 +154,7 @@ export default function Home() {
           >
             Professional AI Voice Support,
             <span className="block bg-gradient-to-r from-cyan-300 via-blue-300 to-emerald-300 bg-clip-text text-transparent">
-              Built for Doctor & Hotel Businesses
+              Built for Every Business
             </span>
           </motion.h1>
 
