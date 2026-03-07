@@ -28,6 +28,30 @@ function chunkText(text: string, size = 800, overlap = 120) {
   return chunks;
 }
 
+function extractTextFallbackFromPdf(buffer: Buffer) {
+  // Heuristic fallback for malformed PDFs where strict parser fails (e.g. bad XRef).
+  // It scans stream sections and keeps printable text only.
+  const raw = buffer.toString("latin1");
+  const streamMatches = raw.match(/stream[\r\n]+([\s\S]*?)endstream/g) || [];
+
+  const extracted = streamMatches
+    .map((chunk) =>
+      chunk
+        .replace(/^stream[\r\n]+/, "")
+        .replace(/endstream$/, "")
+        .replace(/\\\(([\s\S]*?)\\\)/g, " $1 ")
+        .replace(/\(([^\)]{2,})\)/g, " $1 ")
+        .replace(/\\[nrtbf()\\]/g, " ")
+        .replace(/[^\x20-\x7E\n]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .join(" ")
+    .trim();
+
+  return cleanText(extracted);
+}
+
 async function getActiveTier(admin: ReturnType<typeof getSupabaseAdmin>, userId: string) {
   const { data } = await admin
     .from("payments")
@@ -165,12 +189,23 @@ export async function POST(request: Request) {
       const parsed = await pdfParse(buffer);
       chunks = chunkText(parsed.text || "");
     } catch (parseError) {
-      await admin.from("kb_documents").update({ status: "failed" }).eq("id", insertedDoc.id);
-      const message =
-        parseError instanceof Error
-          ? parseError.message
-          : "PDF parsing failed. Try another PDF or a smaller non-scanned file.";
-      return NextResponse.json({ error: `PDF parsing failed: ${message}` }, { status: 500 });
+      const fallbackText = extractTextFallbackFromPdf(buffer);
+      chunks = chunkText(fallbackText || "");
+
+      if (chunks.length === 0) {
+        await admin.from("kb_documents").update({ status: "failed" }).eq("id", insertedDoc.id);
+        const message =
+          parseError instanceof Error
+            ? parseError.message
+            : "PDF parsing failed. Try exporting as a searchable PDF.";
+        return NextResponse.json(
+          {
+            error:
+              `PDF parsing failed: ${message}. Please re-export this file as searchable PDF (Print to PDF) and upload again.`,
+          },
+          { status: 500 },
+        );
+      }
     }
 
     if (chunks.length > 0) {
